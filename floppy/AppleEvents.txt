@@ -1,0 +1,65 @@
+Emu Serial Gateway: Apple Event relay
+Version {VERSION}
+
+The gateway is the Mac-side endpoint of emu-serial-bridge. Any application
+that can send an Apple Event can send a bridge command through the gateway
+and receive the reply text, without touching the serial port. The gateway
+sends the command between its own polls, so replies never interleave.
+
+THREE WAYS TO SEND
+
+  HyperCard 2.1 or later:
+      request "HA LIST" from program "Emu Serial Gateway"
+      -- the reply is in "it", lines separated by return
+
+  AppleScript:
+      tell application "Emu Serial Gateway" to do script "BAT?"
+      -- the reply is the result
+
+  Any Apple Event client (C, Pascal, FutureBASIC ...):
+      event class 'EmuG', event ID 'serl'
+      direct parameter: the command as typeChar text
+      reply: the bridge's reply text as typeChar in the direct parameter
+      Find the gateway's process serial number by creator 'EmGw' with
+      GetNextProcess/GetProcessInformation, then AESend with kAEWaitReply.
+
+COMPLETION RULES
+
+  A reply is complete after one line, except replies whose first line
+  begins with "HA|" (other than "HA|PAGES|"), which continue until an
+  "HA|END" line. A third of a second of silence also ends a reply. The
+  gateway waits up to six seconds for the first byte.
+
+META COMMANDS (answered by the gateway itself)
+
+  GATEWAY STATUS     one line: version, serial state, paused flag,
+                     last battery percentage, brightness, error count
+  GATEWAY PAUSE      stop the gateway's own polling
+  GATEWAY RESUME     resume it
+  GATEWAY VERSION    "GATEWAY VERSION 100"
+
+  PAUSE/RESUME let code that must use the serial port directly (for
+  example a HyperCard stack using the Chesley Serial Port XCMDs) take the
+  port for a while: request "GATEWAY PAUSE" before configureSPort, and
+  request "GATEWAY RESUME" after closeSPort.
+
+ERRORS
+
+  ERR|GATEWAY|SERIAL    the modem port is not open (bridge not connected)
+  ERR|GATEWAY|TIMEOUT   no reply within six seconds
+  ERR|GATEWAY|EMPTY     an empty command was sent
+  ERR|GATEWAY|NOPARAM   the event had no text parameter
+  ERR|GATEWAY|BADCMD    unknown GATEWAY meta command
+  Anything else beginning with ERR comes from the bridge, unchanged.
+
+BRIDGE COMMANDS THE GATEWAY ALREADY USES
+
+  BAT?             BAT <pct> <CHG|DIS|UNK> <min> <watts> <chg> <shdn>
+  BRI?             BRIGHT <pct>
+  BRIGHT <pct>     OK BRIGHT <pct>
+  AUTO? / AUTO n   AUTO <0|1> / OK AUTO <0|1>
+
+Note: the HyperCard "request" command's mapping to the 'misc'/'eval'
+Apple Event is documented HyperCard behaviour but has not yet been
+exercised with the gateway. The 'misc'/'dosc' (do script) form is also
+accepted.

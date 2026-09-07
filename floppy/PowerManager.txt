@@ -1,0 +1,61 @@
+Emu Power Manager
+Version {VERSION}
+
+A system extension that presents enough of the PowerBook Power Manager
+interface for Apple's own software to show the host's battery. The first
+consumer is the System 7.5 menu bar clock: Date & Time > Clock Options >
+"Show the battery level" draws Apple's 16-pixel battery next to the time,
+filling from the host's charge, with the lightning bolt while charging
+and an X when no data is available.
+
+WHAT IT INSTALLS (at startup, in the system heap)
+
+  Gestalt 'powr' = $11         Power Manager exists, Power Manager 2.0
+                                dispatch exists
+  _PowerMgrDispatch (A09E)     selector 12 GetScaledBatteryInfo
+                                            -> the block's pmScaledInfo
+                                selector 26 BatteryCount      -> 1
+                                On a machine that already has a Power
+                                Manager 2.0 dispatch (PCI Power Macs report
+                                'powr' = $10; Energy Saver uses it) the
+                                extension chains in front of it and passes
+                                every other selector through unchanged.
+                                Without one it provides the dispatch itself:
+                                selector 0 PMSelectorCount -> 27, 1
+                                PMFeatures -> 0, others -> 0.
+  _Sleep (A08A)                only if not already implemented: stores the
+                                sleep mode in the block's reqSleep and the
+                                gateway sends SLEEP to the bridge
+  _PMgrOp (A085)               only if not already implemented: pmBusyErr
+  _PowerDispatch (A09F)        only if not already implemented: 0
+  the EmuStatus block and its 'EmuG' Gestalt selector, if this is the
+  first Emu Control Strip component to run at startup
+
+A machine whose 'powr' already has the PMgrExists bit is left alone. The
+machine type is unchanged; only software that asks for the Power Manager is
+affected. What the extension did is recorded in the block's pmInstalled
+field and printed in the gateway log at startup, together with the live
+'powr' value and which of the four traps are implemented.
+
+GetScaledBatteryInfo returns a long in D0: flags in the top byte (bit 7
+battery installed, bit 6 charging, bit 5 charger connected), warning level
+in the next byte, battery level 0..255 in the bottom byte. The gateway keeps
+this value current from the bridge's BAT reply (level = percent * 255 / 100)
+and sets it to 0 when the data is unknown.
+
+The extension must load before the Date & Time control panel, which decides
+at startup whether the machine is a portable: keep it in the Extensions
+folder (loaded before Control Panels).
+
+CONSEQUENCES OF ADVERTISING A POWER MANAGER
+
+  - The Finder shows Sleep in the Special menu. Where the system already
+    implements _Sleep (Energy Saver on PCI Power Macs) that is what runs;
+    otherwise the extension's _Sleep reaches the gateway, which sends SLEEP
+    to the bridge (an error reply until the bridge has a handler, logged and
+    otherwise harmless).
+  - Apple's PowerBook-only Control Strip modules (Battery Monitor, Sleep
+    Now, Power Settings, HD Spin Down) and control panels (PowerBook,
+    PowerBook Setup) will load or open. Battery Monitor reads Power Manager
+    memory directly and can crash; move those files out of the way as the
+    Read Me describes. Emu Battery covers what Battery Monitor showed.

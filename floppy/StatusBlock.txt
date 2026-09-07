@@ -1,0 +1,48 @@
+Emu Serial Gateway: status block
+Version {VERSION}
+
+For an application that only needs the host's battery and brightness state,
+there is no need
+for serial I/O or Apple Events. The gateway publishes a block in the system
+heap and registers the Gestalt selector 'EmuG', whose response is the
+block's address. This is how the Control Strip modules and the Brightness
+control panel work.
+
+  long response;
+  if (Gestalt('EmuG', &response) == noErr && response != 0) {
+      EmuStatus *s = (EmuStatus *) response;
+      ...validate s->signature == 'EmuG', s->version == 1,
+         s->size == sizeof(EmuStatus)...
+  }
+
+The layout is in "EmuShared.h" in this folder, together with helper
+functions: EmuFindStatus (find and validate the block), EmuGatewayAlive (the
+gateway's heartbeat is fresh), EmuBatteryValid and EmuBrightnessValid (data
+fresh), EmuRequestBrightness and EmuRequestAutoDim (post a request that the
+gateway sends to the host within about a tenth of a second).
+
+FIELDS
+
+  heartbeat          TickCount at the gateway's last loop pass; stale after
+                     15 seconds means the gateway is gone
+  batUpdated         TickCount of the last good battery reply, 0 = never
+  batPercent         0..100, -1 unknown
+  batState           0 unknown, 1 discharging, 2 charging, 3 full
+  powerSource        0 unknown, 1 external power, 2 battery
+  runtimeMin         estimated minutes remaining, -1 unavailable
+  wattsX10           output power in tenths of a watt, -1 unavailable
+  brightness         0..100, -1 unknown
+  autoDim            0/1, -1 unknown
+  reqBrightness      write 0..100 to request a change (-1 when none)
+  reqAutoDim         write 0/1 to request a change (-1 when none)
+  reqCounter         increment after posting a request
+  gatewayVersion     100 = 1.0.0
+  serialState        0 closed, 1 open, 2 error
+  errorCount         consecutive failed transactions
+  shutdownRequested  1 while the UPS reports a low-battery shutdown request
+  shortcutMods,
+  hotkeyEnabled      brightness hotkey settings from the control panel
+
+Mac OS 7 is cooperatively scheduled and none of this runs at interrupt
+time, so readers need no locking. Readers only read the status fields and
+write the request fields; the gateway does the opposite.

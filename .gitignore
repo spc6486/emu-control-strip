@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+*.tar.gz
+.DS_Store
+
+# Apple's resource forks: extract from your own System 7.5.5 image (tools/extract_native.py)
+resources/native/*.rsrc
