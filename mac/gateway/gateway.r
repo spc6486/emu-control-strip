@@ -22,6 +22,6 @@ resource 'SIZE' (-1) {
     reserved,
     reserved,
     reserved,
-    192 * 1024,
-    128 * 1024
+    256 * 1024,
+    160 * 1024
 };

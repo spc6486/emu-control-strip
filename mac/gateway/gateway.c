@@ -72,7 +72,7 @@
 /* ---- Tunables ------------------------------------------------------------ */
 #define kInputBufferSize      4096
 #define kLineMax              512
-#define kReplyMax             3072
+#define kReplyMax             8192
 #define kSleepIdleTicks       6          /* WaitNextEvent sleep while idle: 0.1 s */
 #define kSleepBusyTicks       1          /* while a transaction is in flight */
 #define kBatPollTicks         (10L * 60L)
